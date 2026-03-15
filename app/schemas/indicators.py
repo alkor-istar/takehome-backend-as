@@ -1,8 +1,9 @@
 from datetime import datetime
+from enum import Enum
 from pydantic import BaseModel, ConfigDict
 
-from app.schemas.threat_actors import ThreatActor
-from app.schemas.campaigns import Campaign
+from app.schemas.threat_actors import ThreatActorRef
+from app.schemas.campaigns import CampaignRef
 
 
 class Indicator(BaseModel):
@@ -11,11 +12,18 @@ class Indicator(BaseModel):
     id: str
     type: str
     value: str
-    confidence: int
-    first_seen: datetime
-    last_seen: datetime
-    tags: str
-    created_at: datetime
+    confidence: int | None = None
+    first_seen: datetime | None = None
+    last_seen: datetime | None = None
+    tags: str | None = None
+    created_at: datetime | None = None
+
+
+class IndicatorRef(BaseModel):
+    id: str
+    type: str
+    value: str
+    relationship: str
 
 
 class IndicatorDetail(BaseModel):
@@ -24,9 +32,9 @@ class IndicatorDetail(BaseModel):
     id: str
     type: str
     value: str
-    confidence: int
-    first_seen: datetime
-    last_seen: datetime
-    threat_actors: list[ThreatActor]
-    campaigns: list[Campaign]
-    related_indicators: list[Indicator]
+    confidence: int | None = None
+    first_seen: datetime | None = None
+    last_seen: datetime | None = None
+    threat_actors: list[ThreatActorRef]
+    campaigns: list[CampaignRef]
+    related_indicators: list[IndicatorRef]

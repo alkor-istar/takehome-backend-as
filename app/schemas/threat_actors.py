@@ -7,10 +7,15 @@ class ThreatActor(BaseModel):
 
     id: str
     name: str
-    confidence: int
-    description: str
-    country_origin: str
-    first_seen: datetime
-    last_seen: datetime
-    sophistication_level: str
-    created_at: datetime
+    description: str | None = None
+    country_origin: str | None = None
+    first_seen: datetime | None = None
+    last_seen: datetime | None = None
+    sophistication_level: str | None = None
+    created_at: datetime | None = None
+
+
+class ThreatActorRef(BaseModel):
+    id: str
+    name: str
+    confidence: int | None = None
