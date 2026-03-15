@@ -9,6 +9,7 @@ from sqlalchemy import (
     func,
 )
 from app.db.models.base import Base
+from sqlalchemy.orm import relationship
 
 
 class ThreatActorModel(Base):
@@ -29,5 +30,6 @@ class ThreatActorModel(Base):
     sophistication_level = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
 
-
-
+    campaigns = relationship(
+        "ActorCampaignsModel", back_populates="threat_actor", lazy="selectin"
+    )
