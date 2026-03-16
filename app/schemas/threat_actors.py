@@ -13,9 +13,3 @@ class ThreatActor(BaseModel):
     last_seen: datetime | None = None
     sophistication_level: str | None = None
     created_at: datetime | None = None
-
-
-class ThreatActorRef(BaseModel):
-    id: str
-    name: str
-    confidence: int | None = None

@@ -13,11 +13,3 @@ class Campaign(BaseModel):
     first_seen: datetime | None = None
     last_seen: datetime | None = None
     status: str | None = None
-
-
-class CampaignRef(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    name: str
-    active: bool
