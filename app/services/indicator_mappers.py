@@ -6,6 +6,7 @@ from app.schemas.indicators import (
     IndicatorDetailThreatActorRef,
     IndicatorDetailCampaignRef,
     IndicatorDetailRelatedIndicatorRef,
+    IndicatorSearchItem,
 )
 
 
@@ -57,3 +58,20 @@ def related_indicators_mapper(
             )
         )
     return related_indicators
+
+
+def search_indicators_mapper(
+    rows: list[IndicatorModel],
+) -> list[IndicatorSearchItem]:
+    return [
+        IndicatorSearchItem(
+            id=r.id,
+            type=r.type,
+            value=r.value,
+            confidence=r.confidence,
+            first_seen=r.first_seen,
+            campaign_count=r.campaign_count,
+            threat_actor_count=r.threat_actor_count,
+        )
+        for r in rows
+    ]
