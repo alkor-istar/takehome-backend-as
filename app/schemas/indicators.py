@@ -69,7 +69,7 @@ class IndicatorSearchQuery(BaseModel):
     first_seen_after: datetime | None = None
     last_seen_before: datetime | None = None
     page: Page = 1
-    limit: Limit = 10
+    limit: Limit = 20
 
 
 class IndicatorSearchItem(BaseModel):

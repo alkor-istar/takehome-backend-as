@@ -18,13 +18,13 @@ from app.services.campaign_mappers import campaign_timeline_mapper
 
 def get_campaign_indicators(
     campaign_id: UUID, filters: CampaignIndicatorsQuery, db_session: Session
-) -> CampaignIndicatorsResponse:
+) -> CampaignIndicatorsResponse | None:
     campaign_id_str = str(campaign_id)
 
     stmt = select(CampaignModel).where(CampaignModel.id == campaign_id_str)
     campaign = db_session.execute(stmt).scalar_one_or_none()
     if campaign is None:
-        raise HTTPException(status_code=404, detail="Campaign not found")
+        return None
 
     # Group by day or week
     if filters.group_by == "day":

@@ -1,7 +1,6 @@
 from math import ceil
 from typing import Generic, TypeVar, Annotated
 from pydantic import BaseModel, Field
-from pydantic.generics import GenericModel
 
 
 T = TypeVar("T")
@@ -10,7 +9,7 @@ Page = Annotated[int, Field(ge=1)]
 Limit = Annotated[int, Field(ge=1, le=100)]
 
 
-class PaginatedResponse(GenericModel, Generic[T]):
+class PaginatedResponse(BaseModel, Generic[T]):
     data: list[T]
     total: int
     page: Page

@@ -1,0 +1,8 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=Threat Intelligence API
+      - DATABASE_URL=sqlite:///challenge/threat_intel.db

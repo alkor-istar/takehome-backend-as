@@ -1,6 +1,6 @@
 from app.schemas.dashboard import DashboardSummaryQuery
 from sqlalchemy.orm import Session
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from sqlalchemy import func, select
 from app.db.models.indicators import IndicatorModel, CampaignIndicatorsModel
 from app.db.models.campaign import CampaignModel, ActorCampaignsModel
@@ -16,7 +16,7 @@ def get_dashboard_summary(
     query: DashboardSummaryQuery, db_session: Session
 ) -> DashboardSummaryResponse:
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if query.time_range == "24h":
         cutoff = now - timedelta(hours=24)
     elif query.time_range == "7d":

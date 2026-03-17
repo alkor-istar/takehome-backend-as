@@ -8,7 +8,18 @@ from sqlalchemy.orm import Session
 router = APIRouter(tags=["dashboard"])
 
 
-@router.get("/summary", response_model=DashboardSummaryResponse)
+@router.get(
+    "/summary",
+    response_model=DashboardSummaryResponse,
+    summary="Get dashboard summary",
+    description="Provide high-level statistics for the dashboard overview",
+    responses={
+        200: {
+            "description": "Dashboard summary",
+            "model": DashboardSummaryResponse,
+        },
+    },
+)
 def get_dashboard_summary_endpoint(
     query: DashboardSummaryQuery = Depends(), db_session: Session = Depends(get_db)
 ):

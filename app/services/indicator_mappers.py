@@ -10,30 +10,35 @@ from app.schemas.indicators import (
 )
 
 
+def confidence_value(c: int | None) -> int:
+    # Treat None as lowest so we keep the actor with higher confidence.
+    return -1 if c is None else c
+
+
 def campaign_actor_detail_mapper(
     indicator: IndicatorModel,
 ) -> tuple[list[IndicatorDetailCampaignRef], list[IndicatorDetailThreatActorRef]]:
     campaigns = []
-    actors = []
-
+    actors_by_id: dict[str, IndicatorDetailThreatActorRef] = {}
     for ci in indicator.campaigns:
         c = ci.campaign
-
         campaigns.append(
             IndicatorDetailCampaignRef(
                 id=c.id, name=c.name, active=c.status == "active"
             )
         )
-
+        # Deduplicate actors by id and keep the one with higher confidence.
         for ac in c.threat_actors:
             a = ac.threat_actor
-            actors.append(
-                IndicatorDetailThreatActorRef(
-                    id=a.id, name=a.name, confidence=ac.confidence
-                )
+            ref = IndicatorDetailThreatActorRef(
+                id=a.id, name=a.name, confidence=ac.confidence
             )
-
-    return campaigns, actors
+            existing = actors_by_id.get(a.id)
+            if existing is None or confidence_value(ac.confidence) > confidence_value(
+                existing.confidence
+            ):
+                actors_by_id[a.id] = ref
+    return campaigns, list(actors_by_id.values())
 
 
 def related_indicators_mapper(
