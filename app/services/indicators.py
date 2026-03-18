@@ -1,12 +1,14 @@
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import select, exists, func
+from sqlalchemy import case, select, exists, func, or_
 from uuid import UUID
 
-from app.db.models.indicators import IndicatorModel
 from app.db.models.campaign import CampaignModel, ActorCampaignsModel
 from app.db.models.threat_actor import ThreatActorModel
-from app.db.models.indicators import CampaignIndicatorsModel
-from app.db.models.indicators import IndicatorRelationshipModel
+from app.db.models.indicators import (
+    IndicatorModel,
+    CampaignIndicatorsModel,
+    IndicatorRelationshipModel,
+)
 from app.schemas.indicators import (
     IndicatorDetailResponse,
     IndicatorSearchQuery,
@@ -15,7 +17,7 @@ from app.schemas.indicators import (
 )
 from app.services.indicator_mappers import (
     campaign_actor_detail_mapper,
-    related_indicators_mapper,
+    related_indicators_from_joined_rows,
     search_indicators_mapper,
 )
 
@@ -25,7 +27,7 @@ def get_indicator_details(
 ) -> IndicatorDetailResponse | None:
     indicator_id_str = str(indicator_id)
 
-    stmt = (
+    indicator_stmt = (
         select(IndicatorModel)
         .where(IndicatorModel.id == indicator_id_str)
         .options(
@@ -36,33 +38,48 @@ def get_indicator_details(
         )
     )
 
-    indicator = db_session.execute(stmt).scalar_one_or_none()
+    indicator = db_session.execute(indicator_stmt).scalar_one_or_none()
 
     if indicator is None:
         return None
 
     campaigns, actors = campaign_actor_detail_mapper(indicator)
 
-    stmt = (
-        select(IndicatorRelationshipModel)
+    # Single query: JOIN indicator_relationships with indicators (source + target)
+    # and use CASE to select the "other" indicator's id/type/value per row.
+    ir = IndicatorRelationshipModel.__table__
+    si = IndicatorModel.__table__.alias("si")
+    ti = IndicatorModel.__table__.alias("ti")
+    related_stmt = (
+        select(
+            ir.c.relationship_type,
+            case(
+                (ir.c.source_indicator_id == indicator_id_str, ti.c.id),
+                else_=si.c.id,
+            ).label("other_id"),
+            case(
+                (ir.c.source_indicator_id == indicator_id_str, ti.c.type),
+                else_=si.c.type,
+            ).label("other_type"),
+            case(
+                (ir.c.source_indicator_id == indicator_id_str, ti.c.value),
+                else_=si.c.value,
+            ).label("other_value"),
+        )
+        .select_from(ir)
+        .join(si, si.c.id == ir.c.source_indicator_id)
+        .join(ti, ti.c.id == ir.c.target_indicator_id)
         .where(
-            (IndicatorRelationshipModel.source_indicator_id == indicator_id_str)
-            | (IndicatorRelationshipModel.target_indicator_id == indicator_id_str)
+            or_(
+                ir.c.source_indicator_id == indicator_id_str,
+                ir.c.target_indicator_id == indicator_id_str,
+            )
         )
-        .options(
-            selectinload(IndicatorRelationshipModel.source_indicator),
-            selectinload(IndicatorRelationshipModel.target_indicator),
-        )
-        .order_by(IndicatorRelationshipModel.first_observed.desc())
+        .order_by(ir.c.first_observed.desc())
         .limit(5)
     )
-
-    related_indicators_db = db_session.execute(stmt).scalars().all()
-
-    related_indicators = related_indicators_mapper(
-        related_indicators_db,
-        indicator_id_str,
-    )
+    related_rows = db_session.execute(related_stmt).all()
+    related_indicators = related_indicators_from_joined_rows(related_rows)
 
     return IndicatorDetailResponse(
         id=indicator.id,
@@ -125,10 +142,6 @@ def search_indicators(
 
     filtered_ids_sq = filtered_ids.subquery("filtered_ids")
 
-    # Total count for pagination
-    total_stmt = select(func.count()).select_from(filtered_ids_sq)
-    total = db_session.execute(total_stmt).scalar_one()
-
     # Campaign count per indicator (count distinct campaign_id)
     campaign_counts_sq = (
         select(
@@ -136,6 +149,10 @@ def search_indicators(
             func.count(func.distinct(CampaignIndicatorsModel.campaign_id)).label(
                 "campaign_count"
             ),
+        )
+        .join(
+            filtered_ids_sq,
+            filtered_ids_sq.c.id == CampaignIndicatorsModel.indicator_id,
         )
         .group_by(CampaignIndicatorsModel.indicator_id)
         .subquery("campaign_counts")
@@ -152,6 +169,10 @@ def search_indicators(
         .join(
             ActorCampaignsModel,
             ActorCampaignsModel.campaign_id == CampaignIndicatorsModel.campaign_id,
+        )
+        .join(
+            filtered_ids_sq,
+            filtered_ids_sq.c.id == CampaignIndicatorsModel.indicator_id,
         )
         .group_by(CampaignIndicatorsModel.indicator_id)
         .subquery("threat_actor_counts")
@@ -170,8 +191,10 @@ def search_indicators(
             func.coalesce(threat_actor_counts_sq.c.threat_actor_count, 0).label(
                 "threat_actor_count"
             ),
+            func.count().over().label("total_count"),
         )
-        .join(filtered_ids_sq, filtered_ids_sq.c.id == IndicatorModel.id)
+        .select_from(filtered_ids_sq)
+        .join(IndicatorModel, filtered_ids_sq.c.id == IndicatorModel.id)
         .outerjoin(
             campaign_counts_sq, campaign_counts_sq.c.indicator_id == IndicatorModel.id
         )
@@ -184,6 +207,15 @@ def search_indicators(
         .limit(filters.limit)
     )
     rows = db_session.execute(data_stmt).all()
+
+    # Total rows for pagination
+    # From window count when we have rows; else one extra count query
+    if rows:
+        total = rows[0].total_count
+    else:
+        total = db_session.execute(
+            select(func.count()).select_from(filtered_ids_sq)
+        ).scalar_one()
 
     # Convert rows to items
     items = search_indicators_mapper(rows)

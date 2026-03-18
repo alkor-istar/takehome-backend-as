@@ -41,12 +41,10 @@ class IndicatorModel(Base):
     campaigns = relationship(
         "CampaignIndicatorsModel",
         back_populates="indicators",
-        lazy="selectin",
     )
     observations = relationship(
         "ObservationModel",
         back_populates="indicator",
-        lazy="selectin",
     )
     relationships_out = relationship(
         "IndicatorRelationshipModel",

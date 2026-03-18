@@ -10,6 +10,21 @@ from app.schemas.indicators import (
 )
 
 
+def related_indicators_from_joined_rows(
+    rows: list,
+) -> list[IndicatorDetailRelatedIndicatorRef]:
+    """Build related-indicator refs from the single-query JOIN result (other_id, other_type, other_value, relationship_type)."""
+    return [
+        IndicatorDetailRelatedIndicatorRef(
+            id=row.other_id,
+            type=row.other_type,
+            value=row.other_value,
+            relationship=row.relationship_type,
+        )
+        for row in rows
+    ]
+
+
 def confidence_value(c: int | None) -> int:
     # Treat None as lowest so we keep the actor with higher confidence.
     return -1 if c is None else c
@@ -39,30 +54,6 @@ def campaign_actor_detail_mapper(
             ):
                 actors_by_id[a.id] = ref
     return campaigns, list(actors_by_id.values())
-
-
-def related_indicators_mapper(
-    related_indicators_db: list[IndicatorRelationshipModel],
-    validated_indicator_id: str,
-) -> list[IndicatorDetailRelatedIndicatorRef]:
-    related_indicators: list[IndicatorDetailRelatedIndicatorRef] = []
-    for related_indicator_db in related_indicators_db:
-        # Need to check if the related indicator is the source or target
-        other_indicator = (
-            related_indicator_db.source_indicator
-            if related_indicator_db.target_indicator_id == validated_indicator_id
-            else related_indicator_db.target_indicator
-        )
-
-        related_indicators.append(
-            IndicatorDetailRelatedIndicatorRef(
-                id=other_indicator.id,
-                type=other_indicator.type,
-                value=other_indicator.value,
-                relationship=related_indicator_db.relationship_type,
-            )
-        )
-    return related_indicators
 
 
 def search_indicators_mapper(

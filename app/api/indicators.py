@@ -14,6 +14,30 @@ router = APIRouter(tags=["indicators"])
 
 
 @router.get(
+    "/search",
+    response_model=IndicatorSearchResponse,
+    description="Search and filter indicators based on various criteria.",
+    responses={
+        200: {
+            "description": "Indicators matching the search criteria.",
+            "model": IndicatorSearchResponse,
+        },
+        404: {
+            "description": "No indicators found.",
+        },
+    },
+)
+def search_indicators_endpoint(
+    filters: IndicatorSearchQuery = Depends(IndicatorSearchQuery),
+    db_session: Session = Depends(get_db),
+) -> IndicatorSearchResponse:
+    found_indicators = search_indicators(filters, db_session)
+    if found_indicators is None:
+        raise HTTPException(status_code=404, detail="No indicators found")
+    return found_indicators
+
+
+@router.get(
     "/{indicator_id:uuid}",
     summary="Get indicator details by ID",
     description="Retrieve detailed information about a specific indicator.",
@@ -37,27 +61,3 @@ def get_indicator(
         raise HTTPException(status_code=404, detail="Indicator not found")
 
     return indicator_details
-
-
-@router.get(
-    "/search",
-    response_model=IndicatorSearchResponse,
-    description="Search and filter indicators based on various criteria.",
-    responses={
-        200: {
-            "description": "Indicators matching the search criteria.",
-            "model": IndicatorSearchResponse,
-        },
-        404: {
-            "description": "No indicators found.",
-        },
-    },
-)
-def search_indicators_endpoint(
-    filters: IndicatorSearchQuery = Depends(IndicatorSearchQuery),
-    db_session: Session = Depends(get_db),
-) -> IndicatorSearchResponse:
-    found_indicators = search_indicators(filters, db_session)
-    if found_indicators is None:
-        raise HTTPException(status_code=404, detail="No indicators found")
-    return found_indicators
