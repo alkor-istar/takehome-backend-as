@@ -8,7 +8,7 @@ from app.api.router import api_router
 from app.core.exceptions import register_exception_handlers
 from app.core.custom_openapi import get_custom_openapi
 
-limiter = Limiter(key_func=get_remote_address, default_limits=["10/minute"])
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
 
 def create_app() -> FastAPI:
