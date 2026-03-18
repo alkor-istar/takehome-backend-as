@@ -4,9 +4,13 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.db.models.campaign import CampaignModel, ActorCampaignsModel
-from app.db.models.indicators import IndicatorModel, CampaignIndicatorsModel
-from app.db.models.threat_actor import ThreatActorModel
+from app.db import (
+    CampaignModel,
+    ActorCampaignsModel,
+    IndicatorModel,
+    CampaignIndicatorsModel,
+    ThreatActorModel,
+)
 
 
 CAMPAIGN_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"

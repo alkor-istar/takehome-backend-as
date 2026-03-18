@@ -4,9 +4,13 @@ from datetime import datetime, timezone, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.db.models.campaign import CampaignModel, ActorCampaignsModel
-from app.db.models.indicators import IndicatorModel, CampaignIndicatorsModel
-from app.db.models.threat_actor import ThreatActorModel
+from app.db import (
+    CampaignModel,
+    ActorCampaignsModel,
+    IndicatorModel,
+    CampaignIndicatorsModel,
+    ThreatActorModel,
+)
 
 
 # Use recent timestamps so they fall inside 24h, 7d, 30d cutoffs

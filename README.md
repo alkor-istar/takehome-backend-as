@@ -71,7 +71,8 @@ To design these queries I used the SQLAlchemy documentation, feedback from AI to
 
 ### Indicator Details Endpoint
 
-The indicator-details response requires joining several tables. The dependency between tables is illustrated in: [challenge/schema.jpg](challenge/schema.jpg).
+The dependency between tables is illustrated in:
+<img src="challenge/schema.jpg" alt="Database schema diagram" style="max-width: 100%; height: auto;" />
 Created with [graphmydb.online](www.graphmydb.online)
 
 Conceptually, the join path is:
@@ -177,7 +178,7 @@ Returns high-level stats for a dashboard: new indicators by type, active campaig
 2. **Active campaigns**  
    `SELECT COUNT(id) FROM campaigns WHERE status = 'active'`.
 
-   Asumption: Here we need all the active campaigns, not just in the selected period. It is not clear in the requirements.
+   Assumption: Here we need all the active campaigns, not just in the selected period. It is not clear in the requirements.
 
 3. **Top 5 threat actors**  
    From `actor_campaigns` JOIN `threat_actors` JOIN `campaign_indicators`, restricted to `campaign_indicators.observed_at >= :cutoff` (same time window). Group by threat actor, `COUNT(DISTINCT indicator_id)`, order by that count DESC, LIMIT 5. So “top” means most distinct indicators linked via their campaigns in the selected period.
@@ -185,6 +186,6 @@ Returns high-level stats for a dashboard: new indicators by type, active campaig
 4. **Indicator distribution**  
    `SELECT type, COUNT(id) FROM indicators GROUP BY type` (all time). Used for the overall breakdown by type (ip, domain, url, hash).
 
-   Asumption: Again, here I consider that we need overall statistics, not filtered by observed_at. If this is not the case, it can be fixed easily by filtering with cutoff.
+   Assumption: Again, here I consider that we need overall statistics, not filtered by observed_at. If this is not the case, it can be fixed easily by filtering with cutoff.
 
 Indexes on `indicators(first_seen)` and `campaign_indicators(observed_at)` help the time-bounded queries (new indicators, top threat actors).

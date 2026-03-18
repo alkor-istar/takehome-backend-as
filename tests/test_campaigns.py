@@ -50,6 +50,42 @@ def test_get_campaign_indicators_not_found(client_with_memory_db):
     assert response.json()["detail"] == "Campaign not found"
 
 
+def test_get_campaign_indicators_invalid_uuid(client):
+    """GET /api/campaigns/{id}/indicators returns 400 when campaign_id is not a valid UUID."""
+    response = client.get("/api/campaigns/not-a-uuid/indicators")
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"] == "Invalid request parameters"
+    assert "errors" in data
+
+
+def test_get_campaign_indicators_invalid_group_by(client):
+    """GET /api/campaigns/{id}/indicators?group_by=invalid returns 400."""
+    response = client.get(
+        "/api/campaigns/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/indicators",
+        params={"group_by": "month"},
+    )
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"] == "Invalid request parameters"
+    assert "errors" in data
+
+
+def test_get_campaign_indicators_invalid_date(client):
+    """GET /api/campaigns/{id}/indicators?start_date=invalid returns 400."""
+    response = client.get(
+        "/api/campaigns/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/indicators",
+        params={"start_date": "not-a-date"},
+    )
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"] == "Invalid request parameters"
+    assert "errors" in data
+
+
 def test_get_campaign_indicators_group_by_week(client_with_memory_db):
     """GET /api/campaigns/{id}/indicators?group_by=week returns timeline with week periods."""
     client, session = client_with_memory_db

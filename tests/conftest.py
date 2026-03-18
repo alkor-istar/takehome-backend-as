@@ -6,8 +6,8 @@ from sqlalchemy.pool import StaticPool
 
 from app.main import create_app
 from app.db.session import get_db
-from app.db.models.base import Base
-from app.db import (  # register all models with Base.metadata
+from app.db import (
+    Base,
     CampaignModel,
     ActorCampaignsModel,
     IndicatorModel,

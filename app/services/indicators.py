@@ -20,6 +20,7 @@ from app.services.indicator_mappers import (
     related_indicators_from_joined_rows,
     search_indicators_mapper,
 )
+from app.services.utils import escape_like
 
 
 def get_indicator_details(
@@ -104,8 +105,13 @@ def search_indicators(
     if filters.type:
         filtered_ids = filtered_ids.where(IndicatorModel.type == filters.type.value)
     if filters.value:
+        # Escape the value for the LIKE statement to prevent wildcard injection
+        # If a user passes % or _ as the value, these are LIKE wildcards and will
+        # match unintended rows
+        safe_value = escape_like(filters.value)
+        pattern = f"%{safe_value}%"
         filtered_ids = filtered_ids.where(
-            IndicatorModel.value.ilike(f"%{filters.value}%")
+            IndicatorModel.value.ilike(pattern, escape="\\")
         )
     if filters.first_seen_after:
         filtered_ids = filtered_ids.where(

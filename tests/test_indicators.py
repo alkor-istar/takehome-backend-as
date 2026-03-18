@@ -49,6 +49,61 @@ def test_get_indicator_details_not_found(client_with_memory_db):
     assert response.json()["detail"] == "Indicator not found"
 
 
+def test_get_indicator_details_invalid_uuid(client):
+    """GET /api/indicators/{id} returns 400 when indicator_id is not a valid UUID."""
+    response = client.get("/api/indicators/not-a-uuid")
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"] == "Invalid request parameters"
+    assert "errors" in data
+    assert len(data["errors"]) >= 1
+    # Path param validation error should mention the invalid value
+    error_locs = [e.get("loc") or e.get("location") for e in data["errors"]]
+    assert any("indicator_id" in str(loc) or "path" in str(loc) for loc in error_locs)
+
+
+def test_search_indicators_invalid_type(client):
+    """GET /api/indicators/search?type=invalid returns 400."""
+    response = client.get("/api/indicators/search", params={"type": "invalid"})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"] == "Invalid request parameters"
+    assert "errors" in data
+
+
+def test_search_indicators_invalid_page(client):
+    """GET /api/indicators/search?page=0 returns 400."""
+    response = client.get("/api/indicators/search", params={"page": 0})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"] == "Invalid request parameters"
+    assert "errors" in data
+
+
+def test_search_indicators_invalid_limit(client):
+    """GET /api/indicators/search?limit=0 and limit=101 return 400."""
+    r1 = client.get("/api/indicators/search", params={"limit": 0})
+    r2 = client.get("/api/indicators/search", params={"limit": 101})
+
+    assert r1.status_code == 400
+    assert r2.status_code == 400
+    assert r1.json()["detail"] == "Invalid request parameters"
+    assert r2.json()["detail"] == "Invalid request parameters"
+
+
+def test_search_indicators_invalid_campaign_uuid(client):
+    """GET /api/indicators/search?campaign=not-a-uuid returns 400."""
+    response = client.get("/api/indicators/search", params={"campaign": "not-a-uuid"})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"] == "Invalid request parameters"
+    assert "errors" in data
+
+
 def test_search_indicators_empty(client_with_memory_db):
     """GET /api/indicators/search returns 200 with empty data when no indicators exist."""
     client, _ = client_with_memory_db

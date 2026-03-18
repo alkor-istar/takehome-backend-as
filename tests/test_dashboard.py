@@ -60,3 +60,13 @@ def test_get_dashboard_summary_empty(client_with_memory_db):
     assert data["active_campaigns"] == 0
     assert data["top_threat_actors"] == []
     assert data["indicator_distribution"] == {"ip": 0, "domain": 0, "url": 0, "hash": 0}
+
+
+def test_get_dashboard_summary_invalid_time_range(client):
+    """GET /api/dashboard/summary?time_range=invalid returns 400."""
+    response = client.get("/api/dashboard/summary", params={"time_range": "invalid"})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"] == "Invalid request parameters"
+    assert "errors" in data

@@ -2,12 +2,12 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from uuid import UUID
 from sqlalchemy.orm import Session
 
-from app.schemas.indicators import (
+from app.schemas import (
     IndicatorDetailResponse,
     IndicatorSearchQuery,
     IndicatorSearchResponse,
 )
-from app.services.indicators import get_indicator_details, search_indicators
+from app.services import get_indicator_details, search_indicators
 from app.db.session import get_db
 
 router = APIRouter(tags=["indicators"])
@@ -21,24 +21,18 @@ router = APIRouter(tags=["indicators"])
         200: {
             "description": "Indicators matching the search criteria.",
             "model": IndicatorSearchResponse,
-        },
-        404: {
-            "description": "No indicators found.",
-        },
+        }
     },
 )
 def search_indicators_endpoint(
     filters: IndicatorSearchQuery = Depends(IndicatorSearchQuery),
     db_session: Session = Depends(get_db),
 ) -> IndicatorSearchResponse:
-    found_indicators = search_indicators(filters, db_session)
-    if found_indicators is None:
-        raise HTTPException(status_code=404, detail="No indicators found")
-    return found_indicators
+    return search_indicators(filters, db_session)
 
 
 @router.get(
-    "/{indicator_id:uuid}",
+    "/{indicator_id}",
     summary="Get indicator details by ID",
     description="Retrieve detailed information about a specific indicator.",
     response_model=IndicatorDetailResponse,

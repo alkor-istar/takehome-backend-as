@@ -7,8 +7,6 @@ from app.schemas.common import PaginatedResponse, Page, Limit
 
 
 class Indicator(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: str
     type: str
     value: str
@@ -26,8 +24,6 @@ class IndicatorDetailThreatActorRef(BaseModel):
 
 
 class IndicatorDetailCampaignRef(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: str
     name: str
     active: bool
@@ -41,8 +37,6 @@ class IndicatorDetailRelatedIndicatorRef(BaseModel):
 
 
 class IndicatorDetailResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: str
     type: str
     value: str

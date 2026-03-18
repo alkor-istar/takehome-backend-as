@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
-from app.schemas.dashboard import DashboardSummaryResponse, DashboardSummaryQuery
-from app.services.dashboard import get_dashboard_summary
+from app.schemas import DashboardSummaryResponse, DashboardSummaryQuery
+from app.services import get_dashboard_summary
 from app.db.session import get_db
 from sqlalchemy.orm import Session
 

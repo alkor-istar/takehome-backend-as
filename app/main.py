@@ -3,10 +3,8 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.core.config import settings
-from app.api.router import api_router
-from app.core.exceptions import register_exception_handlers
-from app.core.custom_openapi import get_custom_openapi
+from app.core import settings, register_exception_handlers, get_custom_openapi
+from app.api import api_router
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 

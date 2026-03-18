@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 
 
 from app.db.session import get_db
-from app.schemas.campaigns import CampaignIndicatorsResponse, CampaignIndicatorsQuery
-from app.services.campaign import get_campaign_indicators
+from app.schemas import CampaignIndicatorsResponse, CampaignIndicatorsQuery
+from app.services import get_campaign_indicators
 
 router = APIRouter(tags=["campaigns"])
 
