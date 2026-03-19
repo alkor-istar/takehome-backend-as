@@ -2,6 +2,8 @@
 
 ## Threat Intelligence API
 
+[Github](https://github.com/alkor-istar/takehome-backend-as)
+
 ### How to Run
 
 #### Easiest: Use the Live API
@@ -61,6 +63,44 @@ FastAPI was chosen for built-in request/response validation (Pydantic) and autom
 
 An alternative would be SQLModel, which can unify Pydantic schemas and ORM models. I kept a clear separation between API schemas and database models, which tends to scale better in larger codebases and still allows custom response shapes for each endpoint.
 
+### Caching strategy
+
+For caching I would choose a Redis server with a different caching strategy for each endpoint.
+
+Note: I've chosen not to implement this in this project because of several factors:
+
+- Time constraints
+- Live deployment costs
+- No write endpoints that execute the invalidation code
+
+#### Dashboard (/dashboard/summary)
+
+This endpoint runs 4 separate DB queries on every call, the data changes only when new indicators are ingested. For a threat intel dashboard that refreshes every few seconds in a browser, caching this endpoint will have the most important performance and resource saving impact. This one should be invalidated by TTL.
+
+- **Key:** dashboard:summary:{query.time_range}
+- **TTL:** {"24h": 300, "7d": 900, "30d": 3600}
+  The 30d window barely changes minute-to-minute, so a 1-hour TTL is fine.
+
+#### Indicator Detail (/indicators/{id})
+
+This endpoint runs 2 intensive DB queries. It should be invalidated on write event, with dependency logic for campaigns, threat actors, and related indicators.
+
+- **Key:** indicator:{id}
+- **TTL:** 10 minutes, invalidate on write
+
+I added HTTP-Level caching for this endpoint which doesn't need any infrastructure, it could be used in other endpoints too, but it lacks invalidation, only time-to-live.
+
+#### Indicator search (/indicators/search)
+
+This endpoint has too many parameters to be cached effectively; most uses will have a unique combination of filters. My suggestion here is to do some database optimization. For instance, for the value LIKE filter, a GIN index would work really well for IP addresses.
+
+#### Campaign Timeline (/campaigns/{id}/indicators)
+
+Runs 4 queries (exists check, timeline rows, counts, summary). The results are deterministic for a given (campaign_id, start_date, end_date, group_by) combination.
+
+- **Key:** campaign:timeline:{campaign_id}:{start_date}:{end_date}:{group_by}
+- **TTL:** {"24h": 300, "7d": 900, "30d": 3600}
+
 ---
 
 ## Assumptions and Query Design
@@ -73,7 +113,7 @@ To design these queries I used the SQLAlchemy documentation, feedback from AI to
 
 The dependency between tables is illustrated in:
 <img src="challenge/schema.jpg" alt="Database schema diagram" style="max-width: 100%; height: auto;" />
-Created with [graphmydb.online](www.graphmydb.online)
+Created with [graphmydb.online](https://www.graphmydb.online)
 
 Conceptually, the join path is:
 
@@ -100,7 +140,7 @@ WHERE i.id = :indicator_id_str;
 
 A single query with multiple `LEFT JOIN`s can produce a large Cartesian product (one row per indicator–campaign–actor combination), which can be heavy on memory and risk OOM under load. For that reason, the implementation uses SQLAlchemy's **`selectinload`** instead of a single joined query. `selectinload` issues a fixed number of separate queries (one for each relationship level), each with small result sets and no row duplication. This avoids both the N+1 problem and the Cartesian explosion, trading a few extra round-trips for better memory efficiency.
 
-With the results of that query it is possible to populate the indicators details, associated threat actors and campaigns. But it is still needed to deduplicate the threat actors. The deduplication of these is made in the campaign_actor_detail_mapper ind I made the assumption here that it is ok to keep the threat actor with the most confidence.
+With the results of that query it is possible to populate the indicator details, associated threat actors, and campaigns. Deduplication of threat actors is still needed; this is done in the campaign_actor_detail_mapper, and I assumed it is acceptable to keep the threat actor with the highest confidence.
 
 #### Indicator-to-indicator relationships (related indicators)
 
@@ -142,6 +182,11 @@ Search returns a paginated list of indicators with per-row **campaign count** an
 
 So in the typical case (non-empty page) the endpoint runs **one query**; with an empty page it runs **two queries**.
 
+**Notes:**
+
+- The `value` filter is a **substring match** (contains): the pattern is `%{value}%`, so e.g. `192.168` matches `192.168.1.1`.
+- User input in `value` is escaped so that `%` and `_` are not interpreted as SQL LIKE wildcards (avoids accidental matches). Also this can avoid some kind of SQL Injection. Maybe a more complete validation sanitation solution is needed here.
+
 ---
 
 ### Campaign Timeline
@@ -161,6 +206,10 @@ Returns a campaign’s indicators organized in time buckets (by day or week) for
 
 4. **Summary**  
    One row: `COUNT(indicator_id)` as total_indicators, conditional counts for unique IPs and unique domains (`CASE WHEN type = 'ip' THEN id END` etc.), and `MIN(observed_at)` / `MAX(observed_at)` for duration. All over the same campaign + optional date range.
+
+**Notes:**
+
+- The summary (total_indicators, unique_ips, unique_domains, duration_days) is scoped to the requested date range when `start_date`/`end_date` are provided; it is not all-time for the campaign.
 
 **Performance consideration:** Adding an index on observed_at could improve the performance of the filters. A composite index like (campaign_id, observed_at) should also be considered.
 

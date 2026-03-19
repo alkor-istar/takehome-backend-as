@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, Response
 from uuid import UUID
 from sqlalchemy.orm import Session
 
@@ -47,11 +47,16 @@ def search_indicators_endpoint(
     },
 )
 def get_indicator(
-    indicator_id: UUID, db_session: Session = Depends(get_db)
+    indicator_id: UUID,
+    response: Response,
+    db_session: Session = Depends(get_db),
 ) -> IndicatorDetailResponse:
     indicator_details = get_indicator_details(indicator_id, db_session)
 
     if indicator_details is None:
         raise HTTPException(status_code=404, detail="Indicator not found")
 
+    # HTTP-Level caching
+    response.headers["Cache-Control"] = "public, max-age=30"
+    response.headers["ETag"] = f'"{indicator_details.id}-{indicator_details.last_seen}"'
     return indicator_details

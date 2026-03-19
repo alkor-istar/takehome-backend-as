@@ -1,7 +1,3 @@
-# Augur Security - Sr Backend Take Home
-
-### Pages
-
 # Senior Backend Engineer - Take-Home Assignment
 
 ## Threat Intelligence API Development
@@ -17,11 +13,13 @@ Build a set of REST API endpoints that power a threat intelligence dashboard. Se
 ### What We're Providing
 
 1. SQLite Database (`threat_intel.db`) with pre-populated data:
+
 - 10,000 threat indicators (IPs, domains, URLs, file hashes)
 - 50 threat actors
 - 100 campaigns
 - Relationships between indicators, campaigns, and threat actors
 - Observation timestamps (when indicators were seen)
+
 1. Database Schema (see `schema.sql`)
 2. Basic Project Scaffold (optional - you can start from scratch if preferred)
 
@@ -139,10 +137,12 @@ Please provide:
 
 1. Source Code - Well-organized and commented
 2. README.md with:
+
 - Setup instructions (how to install dependencies and run)
 - API documentation (or link to Swagger)
 - Any assumptions you made
 - What you'd improve with more time
+
 1. Database Query Examples - Show at least 2 of your SQL queries with brief explanation of optimization approach
 2. Brief Architecture Notes - How you structured the code and why
 
@@ -153,18 +153,25 @@ Please provide:
 We'll assess:
 
 1. API Design (30%)
+
 - Response structure suitable for frontend consumption
 - Proper use of HTTP methods and status codes
 - Sensible parameter naming and validation
+
 1. Data Modeling & Queries (30%)
+
 - Efficient SQL queries
 - Proper joins and aggregations
 - Handling of relationships between entities
+
 1. Code Quality (25%)
+
 - Clean, readable code structure
 - Proper error handling
 - Separation of concerns
+
 1. Documentation (15%)
+
 - Clear setup instructions
 - API endpoint documentation
 - Explanation of design decisions
@@ -184,4 +191,3 @@ During the follow-up interview, we'll discuss:
 If anything is unclear or you encounter issues with the provided data, please email us. We want you to spend time showing your skills, not debugging our setup.
 
 **Good luck! We're excited to see your approach.**
-
