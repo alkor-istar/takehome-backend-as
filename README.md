@@ -65,41 +65,53 @@ An alternative would be SQLModel, which can unify Pydantic schemas and ORM model
 
 ### Caching strategy
 
-For caching I would choose a Redis server with a different caching strategy for each endpoint.
+For caching I would choose a Redis cache with a different strategy per endpoint. **Not implemented** in this project due to time constraints, deployment cost, and the absence of write endpoints that would drive invalidation.
 
-Note: I've chosen not to implement this in this project because of several factors:
+---
 
-- Time constraints
-- Live deployment costs
-- No write endpoints that execute the invalidation code
+#### Dashboard — `GET /dashboard/summary`
 
-#### Dashboard (/dashboard/summary)
+Runs 4 DB queries per call; data changes only when new indicators are ingested. For a dashboard that refreshes every few seconds, caching here has the largest impact. Invalidate by TTL only.
 
-This endpoint runs 4 separate DB queries on every call, the data changes only when new indicators are ingested. For a threat intel dashboard that refreshes every few seconds in a browser, caching this endpoint will have the most important performance and resource saving impact. This one should be invalidated by TTL.
+| Key                                    | TTL                                |
+| -------------------------------------- | ---------------------------------- |
+| `dashboard:summary:{query.time_range}` | 24h → 300s, 7d → 900s, 30d → 3600s |
 
-- **Key:** dashboard:summary:{query.time_range}
-- **TTL:** {"24h": 300, "7d": 900, "30d": 3600}
-  The 30d window barely changes minute-to-minute, so a 1-hour TTL is fine.
+The 30d window changes slowly, so a 1-hour TTL is acceptable.
 
-#### Indicator Detail (/indicators/{id})
+#### Indicator detail — `GET /indicators/{id}`
 
-This endpoint runs 2 intensive DB queries. It should be invalidated on write event, with dependency logic for campaigns, threat actors, and related indicators.
+Runs 2 heavy queries. Should be invalidated on write, with dependency on campaigns, threat actors, and related indicators.
 
-- **Key:** indicator:{id}
-- **TTL:** 10 minutes, invalidate on write
+| Key              | TTL                            |
+| ---------------- | ------------------------------ |
+| `indicator:{id}` | 10 min, or invalidate on write |
 
-I added HTTP-Level caching for this endpoint which doesn't need any infrastructure, it could be used in other endpoints too, but it lacks invalidation, only time-to-live.
+HTTP-level caching (e.g. `Cache-Control`, ETag) is used on this endpoint only; no extra infra, but invalidation is TTL-only.
 
-#### Indicator search (/indicators/search)
+#### Indicator search — `GET /indicators/search`
 
-This endpoint has too many parameters to be cached effectively; most uses will have a unique combination of filters. My suggestion here is to do some database optimization. For instance, for the value LIKE filter, a GIN index would work really well for IP addresses.
+Too many filter combinations to cache effectively. Prefer DB-side optimization (e.g. GIN index on the value column for the LIKE filter).
 
-#### Campaign Timeline (/campaigns/{id}/indicators)
+#### Campaign timeline — `GET /campaigns/{id}/indicators`
 
-Runs 4 queries (exists check, timeline rows, counts, summary). The results are deterministic for a given (campaign_id, start_date, end_date, group_by) combination.
+Runs 4 queries; response is deterministic for `(campaign_id, start_date, end_date, group_by)`.
 
-- **Key:** campaign:timeline:{campaign_id}:{start_date}:{end_date}:{group_by}
-- **TTL:** {"24h": 300, "7d": 900, "30d": 3600}
+| Key                                                                  | TTL                                |
+| -------------------------------------------------------------------- | ---------------------------------- |
+| `campaign:timeline:{campaign_id}:{start_date}:{end_date}:{group_by}` | 24h → 300s, 7d → 900s, 30d → 3600s |
+
+### Tests
+
+**Scope and approach.** The suite is API-level: each test hits real HTTP endpoints (FastAPI `TestClient`) and exercises the full stack—routing, validation, service layer, and database. These should be added at some point, but I've chosen to show this approach because it also validates the db queries.
+
+**Database.** Tests run against an **in-memory SQLite** database. The app’s `get_db` dependency is overridden in a pytest fixture so that a single engine/session (with `StaticPool` and `check_same_thread=False`) is created per test run and `Base.metadata.create_all()` is used to create tables. In a real production environment I would run integration tests against a real databas (e.g. a Postgres container started by the CI pipeline—with migrations applied), so that schema, ORM, and migration history stay in sync and we catch compatibility issues early.
+
+**Fixtures and data.** Endpoint tests that need data use shared fixtures (e.g. `tests/mocks/indicators_fixtures`, `dashboard_fixtures`) to seed the in-memory DB via the overridden session. Each test that uses `client_with_memory_db` gets a clean schema and seeds only what it needs.
+
+**What’s covered.** The tests assert status codes, error payloads for invalid input (e.g. bad UUID, `page=0`), and response structure and key fields for success paths (e.g. indicator detail with nested threat actors and campaigns, search pagination, dashboard summary shape). One test validates rate limiting on the health endpoint. There is no dedicated performance or load testing; that would belong in a separate pipeline or environment.
+
+**Running tests.** From the repo root: `pytest`. No env vars or external services are required.
 
 ---
 
