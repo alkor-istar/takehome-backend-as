@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, Depends, Response
+from fastapi import APIRouter, HTTPException, Request, Depends, Response
 from uuid import UUID
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from app.schemas import (
 )
 from app.services import get_indicator_details, search_indicators
 from app.db.session import get_db
+from .utils import generate_etag
 
 router = APIRouter(tags=["indicators"])
 
@@ -41,6 +42,9 @@ def search_indicators_endpoint(
             "description": "Detailed information about the indicator.",
             "model": IndicatorDetailResponse,
         },
+        304: {
+            "description": "The indicator has not changed since the last request.",
+        },
         404: {
             "description": "The indicator with the given ID was not present in the database.",
         },
@@ -49,6 +53,7 @@ def search_indicators_endpoint(
 def get_indicator(
     indicator_id: UUID,
     response: Response,
+    request: Request,
     db_session: Session = Depends(get_db),
 ) -> IndicatorDetailResponse:
     indicator_details = get_indicator_details(indicator_id, db_session)
@@ -57,6 +62,12 @@ def get_indicator(
         raise HTTPException(status_code=404, detail="Indicator not found")
 
     # HTTP-Level caching
+    etag = generate_etag(indicator_details.model_dump_json())
+    print(etag)
+    if request.headers.get("If-None-Match") == etag:
+        print("304")
+        return Response(status_code=304)
+
     response.headers["Cache-Control"] = "public, max-age=30"
-    response.headers["ETag"] = f'"{indicator_details.id}-{indicator_details.last_seen}"'
+    response.headers["ETag"] = etag
     return indicator_details
